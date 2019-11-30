@@ -99,7 +99,7 @@ foo_bridge ENDP
 
 3. It appears that using `__stdcall` will make the exported function to be named `function@some number` instead of `function`. So go back to the corresponding .asm file and change the function name to adjust to the changed version.
 
-4. I originally made a fake dll that only forward function and did nothing else, but that still caused the program to crash with the warning that a function named `_` is not found. So I used `dumpbin` again to examine the fake dll and found that function `_` was not exported. Later I found out that when forwarding functions, if the function is named `_`, the preprocessor statement should be written as
+4. I originally made a fake dll that only forwarded functions and did nothing else, but that still caused the program to crash with the warning that a function named `_` is not found. So I used `dumpbin` again to examine the fake dll and found that function `_` was not exported. Later I found out that when forwarding functions, if the function is named `_`, the preprocessor statement should be written as
 
         #pragma comment(linker, "/export:__=[renamed dll]._,@[ordinal number]")
 
