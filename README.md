@@ -13,11 +13,11 @@ I accidentally came across the area of reverse engineering when I needed to stud
 ## Prerequisite:
 1. I tried a few disassembler debuggers and found that [x64dbg](https://x64dbg.com/#start) to be the best free alternative out there.
 
-Download it and open "Options"->"Preferences". Disable the TLS callback and also ignore all exceptions in the range of 00000000-FFFFFFFF. Otherwise, you are likely to get a lot of pauses during debugging.
+⋅⋅⋅Download it and open "Options"->"Preferences". Disable the TLS callback and also ignore all exceptions in the range of 00000000-FFFFFFFF. Otherwise, you are likely to get a lot of pauses during debugging.
 
 2. Download [Visual Studio IDE](https://visualstudio.microsoft.com) and open a dll project. Set the debug mode to x86 as the dll we hack is 32bit.
 
-We are going to compile some .asm files for better control of the interception process. Right-click on the project in solution explorer to open "Build Dependencies"->"Build Custumizations...", tick the masm option to enable asm compilation.
+⋅⋅⋅We are going to compile some .asm files for better control of the interception process. Right-click on the project in solution explorer to open "Build Dependencies"->"Build Custumizations...", tick the masm option to enable asm compilation.
 
 3. You also need a documentation of the target dll. you may also need the header files of the dll if the function to intercept has self-defined return type or argument types.
 
@@ -28,7 +28,7 @@ Our plan is to replace the target dll with a fake dll, so the software will call
 ```
 #pragma comment(linker, "/export:[function name to forward]=[renamed target dll].[same function to the left],@[ordinal no.]")
 ```
-to the main file. You may find codes to automate this process in (1).
+⋅⋅⋅to the main file. You may find codes to automate this process in (1).
 
 2. Then, write your intercepted function definitions. Here we assume the intercepted function has a prototype of `int foo(bool x)`.
 ```
@@ -53,7 +53,7 @@ __declspec (dllexport) int foo(BOOL x)
 	 return foo_bridge(x);
 }
 ```
-If you use c++, use `extern "C"` prefix before declarations to avoid name mangling by c++ compiler, as they need to be referenced in .asm compiled by MASM. The above code first declares the exported function to be `int foo(BOOL x)`, loads the target dll and get the real function's address. The address is saved in `funcs[0]`, which is a global variable that is used by `foo_bridge()` as we will see later to call the real function. Code to manipulate or use param(x) can be inserted anywhere in the function.
+⋅⋅⋅If you use c++, use `extern "C"` prefix before declarations to avoid name mangling by c++ compiler, as they need to be referenced in .asm compiled by MASM. The above code first declares the exported function to be `int foo(BOOL x)`, loads the target dll and get the real function's address. The address is saved in `funcs[0]`, which is a global variable that is used by `foo_bridge()` as we will see later to call the real function. Code to manipulate or use param(x) can be inserted anywhere in the function.
 
 3. Write asm for `foo_bridge()`
 ```
@@ -77,7 +77,7 @@ foo_bridge PROC
 foo_bridge ENDP
 
 ```
-So `foo_bridge()` will directly jump to the address funcs[0] to execute the real dll function when called!
+⋅⋅⋅So `foo_bridge()` will directly jump to the address funcs[0] to execute the real dll function when called!
 
 4. Write a .def file to tell the linker by what name and ordinal number we want the intercepted function to be exported.
 ```
@@ -99,7 +99,7 @@ EXPORTS
 ```
 #pragma comment(linker, "/export:__=[renamed dll]._,@[ordinal number]")
 ```
-with two `_` for the first name. Otherwise, the function will simply be skipped.
+⋅⋅⋅with two `_` for the first name. Otherwise, the function will simply be skipped.
 
 ## References
 Huge thanks to the people providing great tutorials and examples on how to hijack dll.
