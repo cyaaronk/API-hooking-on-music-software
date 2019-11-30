@@ -25,40 +25,41 @@ I accidentally came across the area of reverse engineering when I needed to stud
 Our plan is to replace the target dll with a fake dll, so the software will call the fake dll instead. We are going to manipulate the data in the call, and redirect it to the target dll afterwards to let it do the actual stuff.
 
 1. First, use `dumpbin \exports [targetdll]` to get the dll exported functions. We choose those we do not want to intercept and set them to forward directly to the target dll when called from the fake dll. For each of the functions,  write 
-```
-#pragma comment(linker, "/export:[function name to forward]=[renamed target dll].[same function to the left],@[ordinal no.]")
-```
+
+        #pragma comment(linker, "/export:[function name to forward]=[renamed target dll].[same function to the left],@[ordinal no.]")
+
 
    to the main file. You may find codes to automate this process in (1).
    
 
 2. Then, write your intercepted function definitions. Here we assume the intercepted function has a prototype of `int foo(bool x)`.
-```
-extern "C" {
-	void* funcs[1];
-}
 
-extern "C" int foo_bridge(BOOL x)
+        extern "C" {
+        	void* funcs[1];
+        }
+        
+        extern "C" int foo_bridge(BOOL x)
+        
+        __declspec (dllexport) int foo(BOOL x)
+        {
+        	 HINSTANCE handle;
+        	 FARPROC function;
+        
+        	 handle = LoadLibraryA("[renamed target dll]");
+        
+        	 function = GetProcAddress(handle, "foo");
+        	 
+           // Extra code to manipulate the data goes here.
+           
+        	 funcs[0] = function;
+        	 return foo_bridge(x);
+        }
 
-__declspec (dllexport) int foo(BOOL x)
-{
-	 HINSTANCE handle;
-	 FARPROC function;
 
-	 handle = LoadLibraryA("[renamed target dll]");
-
-	 function = GetProcAddress(handle, "foo");
-	 
-   // Extra code to manipulate the data goes here.
-   
-	 funcs[0] = function;
-	 return foo_bridge(x);
-}
-```
    If you use c++, use `extern "C"` prefix before declarations to avoid name mangling by c++ compiler, as they need to be referenced in .asm compiled by MASM. The above code first declares the exported function to be `int foo(BOOL x)`, loads the target dll and get the real function's address. The address is saved in `funcs[0]`, which is a global variable that is used by `foo_bridge()` as we will see later to call the real function. Code to manipulate or use param(x) can be inserted anywhere in the function.
 
 
-3. Write asm for `foo_bridge()`
+3. Write asm for `foo_bridge()` so it will directly jump to the address funcs[0] to execute the real dll function when called!
 ```
 function_index equ	 0			 ;; index of function to call. Remember we set func[0] = function?
 .586
@@ -81,15 +82,12 @@ foo_bridge ENDP
 
 ```
 
-   So `foo_bridge()` will directly jump to the address funcs[0] to execute the real dll function when called!
-
 
 4. Write a .def file to tell the linker by what name and ordinal number we want the intercepted function to be exported.
-```
-LIBRARY		[original name of target dll]
-EXPORTS
-	foo=foo @[ordinal number]
-```
+
+        LIBRARY		[original name of target dll]
+        EXPORTS
+        	foo=foo @[ordinal number]
 
 
 5. That's it! Compile it and we should see a dll in the project's Dubug folder. Now rename the target dll and place the fake dll into its original position. Rerun the software and we can intercept it now.
@@ -102,9 +100,9 @@ EXPORTS
 3. It appears that using `__stdcall` will make the exported function to be named `function@some number` instead of `function`. So go back to the corresponding .asm file and change the function name to adjust to the changed version.
 
 4. I originally made a fake dll that only forward function and did nothing else, but that still caused the program to crash with the warning that a function named `_` is not found. So I used `dumpbin` again to examine the fake dll and found that function `_` was not exported. Later I found out that when forwarding functions, if the function is named `_`, the preprocessor statement should be written as
-```
-#pragma comment(linker, "/export:__=[renamed dll]._,@[ordinal number]")
-```
+
+        #pragma comment(linker, "/export:__=[renamed dll]._,@[ordinal number]")
+
 
    with two `_` for the first name. Otherwise, the function will simply be skipped.
    
@@ -113,4 +111,5 @@ EXPORTS
 Huge thanks to the people providing great tutorials and examples on how to hijack dll.
 
 (1) https://github.com/kevinalmansa/DLL_Wrapper
+
 (2) https://www.exploit-db.com/docs/english/13140-api-interception-via-dll-redirection.pdf
