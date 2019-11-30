@@ -28,7 +28,9 @@ Our plan is to replace the target dll with a fake dll, so the software will call
 ```
 #pragma comment(linker, "/export:[function name to forward]=[renamed target dll].[same function to the left],@[ordinal no.]")
 ```
+
    to the main file. You may find codes to automate this process in (1).
+   
 
 2. Then, write your intercepted function definitions. Here we assume the intercepted function has a prototype of `int foo(bool x)`.
 ```
@@ -55,6 +57,7 @@ __declspec (dllexport) int foo(BOOL x)
 ```
    If you use c++, use `extern "C"` prefix before declarations to avoid name mangling by c++ compiler, as they need to be referenced in .asm compiled by MASM. The above code first declares the exported function to be `int foo(BOOL x)`, loads the target dll and get the real function's address. The address is saved in `funcs[0]`, which is a global variable that is used by `foo_bridge()` as we will see later to call the real function. Code to manipulate or use param(x) can be inserted anywhere in the function.
 
+
 3. Write asm for `foo_bridge()`
 ```
 function_index equ	 0			 ;; index of function to call. Remember we set func[0] = function?
@@ -77,7 +80,9 @@ foo_bridge PROC
 foo_bridge ENDP
 
 ```
+
    So `foo_bridge()` will directly jump to the address funcs[0] to execute the real dll function when called!
+
 
 4. Write a .def file to tell the linker by what name and ordinal number we want the intercepted function to be exported.
 ```
@@ -85,6 +90,7 @@ LIBRARY		[original name of target dll]
 EXPORTS
 	foo=foo @[ordinal number]
 ```
+
 
 5. That's it! Compile it and we should see a dll in the project's Dubug folder. Now rename the target dll and place the fake dll into its original position. Rerun the software and we can intercept it now.
 
@@ -99,7 +105,9 @@ EXPORTS
 ```
 #pragma comment(linker, "/export:__=[renamed dll]._,@[ordinal number]")
 ```
+
    with two `_` for the first name. Otherwise, the function will simply be skipped.
+   
 
 ## References
 Huge thanks to the people providing great tutorials and examples on how to hijack dll.
